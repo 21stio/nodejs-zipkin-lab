@@ -1,0 +1,43 @@
+version: '2'
+services:
+  zipkin:
+    image: openzipkin/zipkin:latest
+    ports:
+      - 9411:9411
+  base:
+    build: .
+    image: zipkin-lab_base:latest
+    command: node index.js
+    environment:
+      - APPLICATION_PORT=9000
+      - HTTP_LOGGER_ENDPOINT=http://zipkin:9411/api/v1/spans
+    volumes:
+      - .:/opt/zipkin-lab
+  root:
+    extends: base
+    environment:
+      - NODE_NAME=ROOT
+      - CALL_URL=http://childone:9000
+    ports:
+      - 9000
+    links:
+      - zipkin:zipkin
+      - childone:childone
+  childone:
+    extends: base
+    environment:
+      - NODE_NAME=CHILDONE
+      - FORWARD_URL=http://childtwo:9000
+    ports:
+      - 9000
+    links:
+      - zipkin:zipkin
+      - childtwo:childtwo
+  childtwo:
+    extends: base
+    environment:
+      - NODE_NAME=CHILDTWO
+    ports:
+      - 9000:9000
+    links:
+      - zipkin:zipkin
